@@ -1,0 +1,37 @@
+# Build
+build/
+cmake-build-*/
+obj/
+
+# Binaries & libraries
+*.o
+*.a
+*.so
+metricd
+metricd_tests
+libmetricd_core.a
+
+# Dependencies
+_build/
+_deps/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+compile_commands.json
+
+# Temp
+/tmp/

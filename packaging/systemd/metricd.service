@@ -1,0 +1,18 @@
+[Unit]
+Description=System metrics daemon (metricd)
+Documentation=https://github.com/anomalyco/metricd
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/metricd
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+
+# User-level daemon — socket lives in /run/user/<uid>/
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=default.target

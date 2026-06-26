@@ -1,0 +1,6 @@
+post_install() {
+    echo ":: metricd installed."
+    echo "   Enable with: systemctl --user enable --now metricd"
+    echo "   Config:      ~/.config/metricd/metricd.toml"
+    echo "   Defaults:    /usr/share/metricd/metricd.default.toml"
+}
