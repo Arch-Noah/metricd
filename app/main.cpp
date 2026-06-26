@@ -1,15 +1,16 @@
 /*
-**  _                                              _      ___    ___  
-** | |                                            | |    |__ \  / _ ** | |_Created _       _ __   _ __    ___    __ _ | |__     ) || (_) |
+**  _                                              _      ___    ___
+** | |                                            | |    |__ \  / _ \
+** | |_Created _       _ __   _ __    ___    __ _ | |__     ) || (_) |
 ** | '_ \ | | | |     | '_ \ | '_ \  / _ \  / _` || '_ \   / /  \__, |
-** | |_) || |_| |     | | | || | | || (_) || (_| || | | | / /_    / / 
-** |_.__/  \__, |     |_| |_||_| |_| \___/  \__,_||_| |_||____|  /_/ 
-**          __/ |     on 25/06/2026.                                          
-**         |___/ 
+** | |_) || |_| |     | | | || | | || (_) || (_| || | | | / /_    / /
+** |_.__/  \__, |     |_| |_||_| |_| \___/  \__,_||_| |_||____|  /_/
+**          __/ |     on 25/06/2026.
+**         |___/
 */
 
 #include "metricd/core/Daemon.hpp"
-#include <iostream>
+#include "Logger.hpp"
 #include <cstdlib>
 
 int main()
@@ -40,7 +41,7 @@ int main()
         metricd::Daemon daemon(cfg);
         return daemon.run();
     } catch (const std::exception& e) {
-        std::cerr << "metricd: " << e.what() << std::endl;
+        LOG(Logger::LogLevel::ERROR, "%s", e.what());
         return 1;
     }
 }

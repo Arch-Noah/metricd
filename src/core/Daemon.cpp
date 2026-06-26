@@ -1,5 +1,5 @@
 /*
-**  _                                              _      ___    ___  
+**  _                                              _      ___    ___
 ** | |                                            | |    |__ \  / _ \
 ** | |_Created _       _ __   _ __    ___    __ _ | |__     ) || (_) |
 ** | '_ \ | | | |     | '_ \ | '_ \  / _ \  / _` || '_ \   / /  \__, |
@@ -9,9 +9,8 @@
 **         |___/
 */
 
-
 #include "metricd/core/Daemon.hpp"
-#include <iostream>
+#include "Logger.hpp"
 #include <csignal>
 #include <cstring>
 
@@ -34,7 +33,6 @@ Daemon::~Daemon()
 void Daemon::signalHandler(int sig)
 {
     if (instance_) {
-        std::cerr << "metricd: signal " << sig << " received, shutting down" << std::endl;
         instance_->stop();
     }
 }
@@ -56,10 +54,10 @@ void Daemon::setupSignals()
 int Daemon::run()
 {
     setupSignals();
-    std::cerr << "metricd: listening on " << config_.socket_path
-              << " (interval=" << config_.interval << "s)" << std::endl;
+    LOG(Logger::LogLevel::INFO, "listening on %s (interval=%ds)",
+        config_.socket_path.c_str(), config_.interval);
     server_.run();
-    std::cerr << "metricd: shut down" << std::endl;
+    LOG(Logger::LogLevel::INFO, "shut down");
     return 0;
 }
 
