@@ -23,3 +23,13 @@ endif()
 
 add_subdirectory(src)
 add_subdirectory(tests)
+
+install(TARGETS metricd RUNTIME DESTINATION bin)
+install(FILES config/metricd.default.toml
+    DESTINATION share/metricd)
+install(FILES packaging/systemd/metricd.service
+    DESTINATION lib/systemd/user)
+install(FILES LICENSE
+    DESTINATION share/licenses/${PROJECT_NAME})
+install(FILES docs/ARCHITECTURE.md docs/PROTOCOL.md
+    DESTINATION share/doc/${PROJECT_NAME})

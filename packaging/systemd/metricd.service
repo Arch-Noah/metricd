@@ -1,11 +1,11 @@
 [Unit]
 Description=System metrics daemon (metricd)
-Documentation=https://github.com/anomalyco/metricd
+Documentation=https://github.com/Arch-Noah/metricd
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/metricd
+ExecStart=/usr/local/bin/metricd
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=5
