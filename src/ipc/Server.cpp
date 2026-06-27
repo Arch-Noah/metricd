@@ -1,14 +1,3 @@
-/*
-**  _                                              _      ___    ___  
-** | |                                            | |    |__ \  / _ \
-** | |_Created _       _ __   _ __    ___    __ _ | |__     ) || (_) |
-** | '_ \ | | | |     | '_ \ | '_ \  / _ \  / _` || '_ \   / /  \__, |
-** | |_) || |_| |     | | | || | | || (_) || (_| || | | | / /_    / / 
-** |_.__/  \__, |     |_| |_||_| |_| \___/  \__,_||_| |_||____|  /_/ 
-**          __/ |     on 25/06/2026.                                          
-**         |___/ 
-*/
-
 #include <utility>
 
 #include "metricd/ipc/Server.hpp"
@@ -16,6 +5,7 @@
 #include "metricd/collectors/CpuCollector.hpp"
 #include "metricd/collectors/DiskCollector.hpp"
 #include "metricd/collectors/NetworkCollector.hpp"
+#include "metricd/collectors/GpuCollector.hpp"
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include <stdexcept>
@@ -27,14 +17,23 @@
 
 using namespace metricd;
 
-ipc::Server::Server(std::string path, int intervalSeconds)  :
-    socketPath(std::move(path)), intervalSec(intervalSeconds)
+ipc::Server::Server(const metricd::Config& config)  :
+    config_(config),
+    socketPath(config.socket_path),
+    intervalSec(config.interval)
 {
     if (socketPath.empty()) throw std::invalid_argument("socketPath cannot be empty");
     if (intervalSec <= 0) throw std::invalid_argument("intervalSec must be greater than 0");
     if (io_uring_queue_init(256, &ring, 0) < 0) {
         throw std::runtime_error("Failed to initialize io_uring queue");
     }
+
+    cpu_collector_ = std::make_unique<CpuCollector>(config.enable_per_core);
+    mem_collector_ = std::make_unique<MemoryCollector>();
+    disk_collector_ = std::make_unique<DiskCollector>();
+    net_collector_ = std::make_unique<NetworkCollector>();
+    gpu_collector_ = std::make_unique<GpuCollector>();
+
     initServer();
     initTimer();
 }
@@ -105,7 +104,6 @@ void ipc::Server::run()
         if (ret < 0) { continue; }
         handleCompletion(cqe);
         io_uring_cqe_seen(&ring, cqe);
-
     }
 }
 
@@ -241,16 +239,13 @@ void ipc::Server::onMessage(int /*client_fd*/, std::string /*msg*/)
 
 std::string ipc::Server::collectMetrics()
 {
-    MemoryCollector mem;
-    CpuCollector cpu;
-    DiskCollector disk;
-    NetworkCollector net;
-
     nlohmann::json all;
-    all["memory"]  = mem.collect();
-    all["cpu"]     = cpu.collect();
-    all["disk"]    = disk.collect();
-    all["network"] = net.collect();
+
+    if (config_.enable_cpu)     all[cpu_collector_->name()]     = cpu_collector_->collect();
+    if (config_.enable_memory)  all[mem_collector_->name()]     = mem_collector_->collect();
+    if (config_.enable_disk)    all[disk_collector_->name()]    = disk_collector_->collect();
+    if (config_.enable_network) all[net_collector_->name()]     = net_collector_->collect();
+    if (config_.enable_gpu)     all[gpu_collector_->name()]     = gpu_collector_->collect();
 
     return all.dump();
 }
@@ -270,4 +265,3 @@ void ipc::Server::broadcast(const std::string& jsonMsg)
     }
     io_uring_submit(&ring);
 }
-

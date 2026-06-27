@@ -6,6 +6,7 @@ add_library(metricd_core STATIC
     collectors/MemoryCollector.cpp
     collectors/DiskCollector.cpp
     collectors/NetworkCollector.cpp
+    collectors/GpuCollector.cpp
         ipc/Server.cpp
     ipc/ClientSession.cpp
     serialization/JsonSerializer.cpp

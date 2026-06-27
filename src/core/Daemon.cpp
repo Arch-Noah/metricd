@@ -20,7 +20,7 @@ Daemon* Daemon::instance_ = nullptr;
 
 Daemon::Daemon(const Config& config)
     : config_(config)
-    , server_(config.socket_path, config.interval)
+    , server_(config)
 {
     instance_ = this;
 }

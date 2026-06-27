@@ -1,14 +1,3 @@
-/*
-**  _                                              _      ___    ___  
-** | |                                            | |    |__ \  / _ \
-** | |_Created _       _ __   _ __    ___    __ _ | |__     ) || (_) |
-** | '_ \ | | | |     | '_ \ | '_ \  / _ \  / _` || '_ \   / /  \__, |
-** | |_) || |_| |     | | | || | | || (_) || (_| || | | | / /_    / /
-** |_.__/  \__, |     |_| |_||_| |_| \___/  \__,_||_| |_||____|  /_/
-**          __/ |     on 25/06/2026.
-**         |___/
-*/
-
 #include "metricd/core/Config.hpp"
 #include <fstream>
 #include <sstream>
@@ -25,6 +14,8 @@ namespace metricd {
         cfg.enable_memory = true;
         cfg.enable_disk = true;
         cfg.enable_network = true;
+        cfg.enable_gpu = true;
+        cfg.enable_per_core = false;
         return cfg;
     }
 
@@ -68,10 +59,12 @@ namespace metricd {
                 else if (key == "interval") cfg.interval = std::stoi(val);
             } else if (current_section == "collectors") {
                 bool enabled = (val == "true" || val == "yes" || val == "1");
-                if (key == "cpu")     cfg.enable_cpu = enabled;
-                if (key == "memory")  cfg.enable_memory = enabled;
-                if (key == "disk")    cfg.enable_disk = enabled;
-                if (key == "network") cfg.enable_network = enabled;
+                if (key == "cpu")       cfg.enable_cpu = enabled;
+                if (key == "memory")    cfg.enable_memory = enabled;
+                if (key == "disk")      cfg.enable_disk = enabled;
+                if (key == "network")   cfg.enable_network = enabled;
+                if (key == "gpu")       cfg.enable_gpu = enabled;
+                if (key == "per_core")  cfg.enable_per_core = enabled;
             }
         }
         return cfg;

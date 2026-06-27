@@ -1,80 +1,95 @@
-/*
-**  _                                              _      ___    ___  
-** | |                                            | |    |__ \  / _ \
-** | |_Created _       _ __   _ __    ___    __ _ | |__     ) || (_) |
-** | '_ \ | | | |     | '_ \ | '_ \  / _ \  / _` || '_ \   / /  \__, |
-** | |_) || |_| |     | | | || | | || (_) || (_| || | | | / /_    / /
-** |_.__/  \__, |     |_| |_||_| |_| \___/  \__,_||_| |_||____|  /_/
-**          __/ |     on 25/06/2026.
-**         |___/
-*/
-
-
 #include "metricd/collectors/NetworkCollector.hpp"
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <string_view>
 #include <cstdlib>
-#include <thread>
-#include <chrono>
+#include <cstring>
 
-struct NetSnapshot {
-    unsigned long long rx_bytes = 0;
-    unsigned long long tx_bytes = 0;
-};
+NetworkCollector::NetworkCollector()
+{
+    start_ = readAllInterfaces();
+}
 
-static NetSnapshot getNetworkSnapshot(const std::string& target_interface)
+std::unordered_map<std::string, NetworkCollector::Snapshot> NetworkCollector::readAllInterfaces()
 {
     std::ifstream netdev("/proc/net/dev");
     char buffer[320];
+    std::unordered_map<std::string, Snapshot> result;
 
     if (!netdev.getline(buffer, sizeof(buffer)) || !netdev.getline(buffer, sizeof(buffer))) {
-        return {};
+        return result;
     }
 
     while (netdev.getline(buffer, sizeof(buffer))) {
-        std::string_view line(buffer);
+        char* ptr = buffer;
+        while (*ptr == ' ') ++ptr;
+        char* colon = std::strchr(ptr, ':');
+        if (!colon) continue;
 
-        size_t pos = line.find(target_interface + ":");
-        if (pos == std::string_view::npos) continue;
+        std::string ifname(ptr, colon - ptr);
+        if (ifname == "lo") continue;
 
-        char* ptr = buffer + pos + target_interface.length() + 1;
+        char* num_ptr = colon + 1;
         char* next_ptr = nullptr;
 
-        unsigned long long rx_bytes = std::strtoull(ptr, &next_ptr, 10);
-        ptr = next_ptr;
+        unsigned long long rx_bytes = std::strtoull(num_ptr, &next_ptr, 10);
+        num_ptr = next_ptr;
 
         for (int i = 0; i < 7; ++i) {
-            std::strtoull(ptr, &next_ptr, 10);
-            ptr = next_ptr;
+            std::strtoull(num_ptr, &next_ptr, 10);
+            num_ptr = next_ptr;
         }
 
-        unsigned long long tx_bytes = std::strtoull(ptr, &next_ptr, 10);
+        unsigned long long tx_bytes = std::strtoull(num_ptr, &next_ptr, 10);
 
-        return {rx_bytes, tx_bytes};
+        result.emplace(ifname, Snapshot{rx_bytes, tx_bytes});
     }
-    return {};
+    return result;
 }
 
 nlohmann::json NetworkCollector::collect()
 {
-    const std::string interface = "eth0";
+    const auto current = readAllInterfaces();
+    nlohmann::json interfaces = nlohmann::json::array();
 
-    NetSnapshot s1 = getNetworkSnapshot(interface);
+    for (const auto& [name, cur] : current) {
+        nlohmann::json iface;
+        iface["name"] = name;
+        iface["rx_bytes_cumulative"] = cur.rx_bytes;
+        iface["tx_bytes_cumulative"] = cur.tx_bytes;
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        if (has_prev_) {
+            auto prev_it = prev_.find(name);
+            if (prev_it != prev_.end()) {
+                const double d_rx = static_cast<double>(cur.rx_bytes - prev_it->second.rx_bytes);
+                const double d_tx = static_cast<double>(cur.tx_bytes - prev_it->second.tx_bytes);
+                iface["download_speed_bps"] = d_rx;
+                iface["upload_speed_bps"] = d_tx;
+            } else {
+                iface["download_speed_bps"] = 0.0;
+                iface["upload_speed_bps"] = 0.0;
+            }
+        } else {
+            iface["download_speed_bps"] = 0.0;
+            iface["upload_speed_bps"] = 0.0;
+        }
 
-    NetSnapshot s2 = getNetworkSnapshot(interface);
+        auto start_it = start_.find(name);
+        if (start_it != start_.end()) {
+            iface["download_today_bytes"] = cur.rx_bytes > start_it->second.rx_bytes
+                ? cur.rx_bytes - start_it->second.rx_bytes : 0ULL;
+            iface["upload_today_bytes"] = cur.tx_bytes > start_it->second.tx_bytes
+                ? cur.tx_bytes - start_it->second.tx_bytes : 0ULL;
+        } else {
+            iface["download_today_bytes"] = 0;
+            iface["upload_today_bytes"] = 0;
+        }
 
-    unsigned long long d_rx_bytes = s2.rx_bytes - s1.rx_bytes;
-    unsigned long long d_tx_bytes = s2.tx_bytes - s1.tx_bytes;
+        interfaces.push_back(iface);
+    }
 
-    double rx_mb_s = (static_cast<double>(d_rx_bytes) / (1024.0 * 1024.0)) / 0.1;
-    double tx_mb_s = (static_cast<double>(d_tx_bytes) / (1024.0 * 1024.0)) / 0.1;
+    prev_ = current;
+    has_prev_ = true;
 
-    return {
-        {"interface", interface},
-        {"download_speed_mb_s", rx_mb_s},
-        {"upload_speed_mb_s", tx_mb_s}
-    };
+    return {{"interfaces", interfaces}};
 }

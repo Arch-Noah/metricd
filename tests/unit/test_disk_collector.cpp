@@ -1,15 +1,3 @@
-/*
-**  _                                              _      ___    ___  
-** | |                                            | |    |__ \  / _ \
-** | |_Created _       _ __   _ __    ___    __ _ | |__     ) || (_) |
-** | '_ \ | | | |     | '_ \ | '_ \  / _ \  / _` || '_ \   / /  \__, |
-** | |_) || |_| |     | | | || | | || (_) || (_| || | | | / /_    / /
-** |_.__/  \__, |     |_| |_||_| |_| \___/  \__,_||_| |_||____|  /_/
-**          __/ |     on 25/06/2026.
-**         |___/
-*/
-
-
 #include "metricd/collectors/DiskCollector.hpp"
 #include <nlohmann/json.hpp>
 #include <cassert>
@@ -30,6 +18,8 @@ int main()
         assert(fs.contains("used_gb"));
         assert(fs.contains("available_gb"));
         assert(fs.contains("used_percent"));
+        assert(fs.contains("disk_read_bytes"));
+        assert(fs.contains("disk_write_bytes"));
 
         const auto total = fs["total_gb"].get<double>();
         assert(total > 0.0);
