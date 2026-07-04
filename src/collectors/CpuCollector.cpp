@@ -97,35 +97,20 @@ double CpuCollector::readCpuMHz()
     return 0.0;
 }
 
-double CpuCollector::readCpuTemp()
-{
-    for (int i = 0; i < 8; ++i) {
-        char path[64];
-        std::snprintf(path, sizeof(path), "/sys/class/thermal/thermal_zone%d/temp", i);
-
-        std::ifstream tempFile(path);
-        if (!tempFile.is_open()) continue;
-
-        unsigned long raw = 0;
-        tempFile >> raw;
-        if (raw > 0) return static_cast<double>(raw) / 1000.0;
-    }
-    return 0.0;
-}
-
 nlohmann::json CpuCollector::collect()
 {
     const Snapshot agg = readAggregate();
     const double cpu_mhz = readCpuMHz();
-    const double cpu_temp = readCpuTemp();
     const int threads = readThreadCount();
 
     double usage_percent = 0.0;
     if (has_prev_) {
         const double total_diff = static_cast<double>(agg.total - prev_aggregate_.total);
         const double idle_diff  = static_cast<double>(agg.idle - prev_aggregate_.idle);
-        if (total_diff > 0.0) {
+        if (total_diff > 0.0 && total_diff < 1e15) {
             usage_percent = ((total_diff - idle_diff) / total_diff) * 100.0;
+        } else {
+            has_prev_ = false;
         }
     }
     prev_aggregate_ = agg;
@@ -133,7 +118,6 @@ nlohmann::json CpuCollector::collect()
     nlohmann::json result;
     result["cpu_usage_percent"] = usage_percent;
     result["clock_ghz"] = cpu_mhz > 0 ? cpu_mhz / 1000.0 : 0.0;
-    result["temp_c"] = cpu_temp;
     result["threads"] = threads;
 
     if (enable_per_core_) {
@@ -144,7 +128,7 @@ nlohmann::json CpuCollector::collect()
             for (size_t i = 0; i < cores.size(); ++i) {
                 const double td = static_cast<double>(cores[i].total - prev_per_core_[i].total);
                 const double id = static_cast<double>(cores[i].idle - prev_per_core_[i].idle);
-                if (td > 0.0) {
+                if (td > 0.0 && td < 1e15) {
                     perCore.push_back(((td - id) / td) * 100.0);
                 } else {
                     perCore.push_back(0.0);

@@ -2,9 +2,10 @@ socket_path = "/run/user/1000/metricd.sock"
 interval = 1
 
 [collectors]
-cpu     = true
-memory  = true
-disk    = true
-network = true
-gpu     = true
-per_core = false
+cpu         = true
+memory      = true
+disk        = true
+network     = true
+gpu         = true
+temperature = true
+per_core    = false

@@ -20,10 +20,12 @@ socket_path = "/run/user/1000/metricd.sock"
 interval = 1
 
 [collectors]
-cpu     = true
-memory  = true
-disk    = true
-network = true
+cpu         = true
+memory      = true
+disk        = true
+network     = true
+gpu         = true
+temperature = true
 ```
 
 Environment variables override config file: `METRICD_SOCKET`, `METRICD_INTERVAL`.

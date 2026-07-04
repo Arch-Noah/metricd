@@ -15,6 +15,7 @@ namespace metricd {
         cfg.enable_disk = true;
         cfg.enable_network = true;
         cfg.enable_gpu = true;
+        cfg.enable_temperature = true;
         cfg.enable_per_core = false;
         return cfg;
     }
@@ -63,8 +64,9 @@ namespace metricd {
                 if (key == "memory")    cfg.enable_memory = enabled;
                 if (key == "disk")      cfg.enable_disk = enabled;
                 if (key == "network")   cfg.enable_network = enabled;
-                if (key == "gpu")       cfg.enable_gpu = enabled;
-                if (key == "per_core")  cfg.enable_per_core = enabled;
+                if (key == "gpu")           cfg.enable_gpu = enabled;
+                if (key == "temperature")   cfg.enable_temperature = enabled;
+                if (key == "per_core")      cfg.enable_per_core = enabled;
             }
         }
         return cfg;

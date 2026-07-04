@@ -11,7 +11,6 @@ int main()
     assert(json.contains("cpu_usage_percent"));
     assert(json.contains("clock_ghz"));
     assert(json.contains("threads"));
-    assert(json.contains("temp_c"));
     assert(json.contains("per_core"));
 
     const double usage = json["cpu_usage_percent"].get<double>();

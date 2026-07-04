@@ -52,6 +52,7 @@ namespace metricd::ipc
             std::unique_ptr<ICollector> disk_collector_;
             std::unique_ptr<ICollector> net_collector_;
             std::unique_ptr<ICollector> gpu_collector_;
+            std::unique_ptr<ICollector> temp_collector_;
 
             void initServer();
             void initTimer();
@@ -64,12 +65,12 @@ namespace metricd::ipc
             void handleCompletion(struct io_uring_cqe* cqe);
             void handleTimerTrigger();
             void removeClient(int client_fd);
-            void broadcast(const std::string& jsonMsg);
+            void broadcast(const std::vector<char>& data);
 
             void onClientConnected(int client_fd);
             void onClientDisconnected(int client_fd);
             void onMessage(int client_fd, std::string msg);
 
-            std::string collectMetrics();
+            std::vector<std::string> collectMetrics();
     };
 }

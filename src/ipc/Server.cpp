@@ -6,14 +6,18 @@
 #include "metricd/collectors/DiskCollector.hpp"
 #include "metricd/collectors/NetworkCollector.hpp"
 #include "metricd/collectors/GpuCollector.hpp"
+#include "metricd/collectors/TemperatureCollector.hpp"
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include <stdexcept>
 #include <cstring>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/timerfd.h>
+#include <sys/stat.h>
+#include <chrono>
 
 using namespace metricd;
 
@@ -33,6 +37,7 @@ ipc::Server::Server(const metricd::Config& config)  :
     disk_collector_ = std::make_unique<DiskCollector>();
     net_collector_ = std::make_unique<NetworkCollector>();
     gpu_collector_ = std::make_unique<GpuCollector>();
+    temp_collector_ = std::make_unique<TemperatureCollector>();
 
     initServer();
     initTimer();
@@ -59,10 +64,14 @@ void ipc::Server::initServer()
     std::strncpy(addr.sun_path, socketPath.c_str(), sizeof(addr.sun_path) - 1);
     unlink(socketPath.c_str());
 
+    const mode_t old_umask = umask(0077);
     if (bind(server_fd, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) < 0) {
+        umask(old_umask);
         close(server_fd);
         throw std::runtime_error("Failed to bind socket");
     }
+    umask(old_umask);
+
     if (listen(server_fd, SOMAXCONN) < 0) {
         close(server_fd);
         throw std::runtime_error("Failed to listen on socket");
@@ -167,7 +176,7 @@ void ipc::Server::queueWrite(int client_fd, const std::vector<char>& data)
 
     auto* ctx = new IOContext(OpType::WRITE, client_fd);
     ctx->buffer = data;
-    io_uring_prep_send(sqe, client_fd, ctx->buffer.data(), ctx->buffer.size(), 0);
+    io_uring_prep_send(sqe, client_fd, ctx->buffer.data(), ctx->buffer.size(), MSG_DONTWAIT);
     io_uring_sqe_set_data(sqe, ctx);
 }
 
@@ -177,7 +186,9 @@ void ipc::Server::handleCompletion(struct io_uring_cqe* cqe)
     if (!ctx) return;
 
     if (cqe->res < 0) {
-        if (ctx->type != OpType::ACCEPT && ctx->type != OpType::TIMER){
+        if (ctx->type == OpType::WRITE) {
+            removeClient(ctx->fd);
+        } else if (ctx->type != OpType::ACCEPT && ctx->type != OpType::TIMER) {
             removeClient(ctx->fd);
         }
         delete ctx;
@@ -220,6 +231,8 @@ void ipc::Server::handleCompletion(struct io_uring_cqe* cqe)
 }
 
 void ipc::Server::onClientConnected(int client_fd) {
+    int flags = fcntl(client_fd, F_GETFL, 0);
+    fcntl(client_fd, F_SETFL, flags | O_NONBLOCK);
     connectedClients.insert(client_fd);
 }
 
@@ -237,29 +250,45 @@ void ipc::Server::onMessage(int /*client_fd*/, std::string /*msg*/)
 {
 }
 
-std::string ipc::Server::collectMetrics()
+std::vector<std::string> ipc::Server::collectMetrics()
 {
-    nlohmann::json all;
+    std::vector<std::string> messages;
 
-    if (config_.enable_cpu)     all[cpu_collector_->name()]     = cpu_collector_->collect();
-    if (config_.enable_memory)  all[mem_collector_->name()]     = mem_collector_->collect();
-    if (config_.enable_disk)    all[disk_collector_->name()]    = disk_collector_->collect();
-    if (config_.enable_network) all[net_collector_->name()]     = net_collector_->collect();
-    if (config_.enable_gpu)     all[gpu_collector_->name()]     = gpu_collector_->collect();
+    const auto now = std::chrono::system_clock::now();
+    const long long timestamp = std::chrono::duration_cast<std::chrono::seconds>(
+        now.time_since_epoch()).count();
 
-    return all.dump();
+    auto make_msg = [&](const std::string& type, nlohmann::json data) -> std::string {
+        data["type"] = type;
+        data["timestamp"] = timestamp;
+        data["proto_version"] = 1;
+        return data.dump();
+    };
+
+    if (config_.enable_cpu)         messages.push_back(make_msg(cpu_collector_->name(), cpu_collector_->collect()));
+    if (config_.enable_memory)      messages.push_back(make_msg(mem_collector_->name(), mem_collector_->collect()));
+    if (config_.enable_disk)        messages.push_back(make_msg(disk_collector_->name(), disk_collector_->collect()));
+    if (config_.enable_network)     messages.push_back(make_msg(net_collector_->name(), net_collector_->collect()));
+    if (config_.enable_gpu)         messages.push_back(make_msg(gpu_collector_->name(), gpu_collector_->collect()));
+    if (config_.enable_temperature) messages.push_back(make_msg(temp_collector_->name(), temp_collector_->collect()));
+
+    return messages;
 }
 
 void ipc::Server::handleTimerTrigger()
 {
-    broadcast(collectMetrics());
+    const auto messages = collectMetrics();
+    std::vector<char> data;
+    for (const auto& msg : messages) {
+        data.insert(data.end(), msg.begin(), msg.end());
+        data.push_back('\n');
+    }
+
+    broadcast(data);
 }
 
-void ipc::Server::broadcast(const std::string& jsonMsg)
+void ipc::Server::broadcast(const std::vector<char>& data)
 {
-    std::vector<char> data(jsonMsg.begin(), jsonMsg.end());
-    data.push_back('\n');
-
     for (const int fd : connectedClients) {
         queueWrite(fd, data);
     }

@@ -63,8 +63,8 @@ nlohmann::json NetworkCollector::collect()
             if (prev_it != prev_.end()) {
                 const double d_rx = static_cast<double>(cur.rx_bytes - prev_it->second.rx_bytes);
                 const double d_tx = static_cast<double>(cur.tx_bytes - prev_it->second.tx_bytes);
-                iface["download_speed_bps"] = d_rx;
-                iface["upload_speed_bps"] = d_tx;
+                iface["download_speed_bps"] = (d_rx >= 0.0 && d_rx < 1e15) ? d_rx : 0.0;
+                iface["upload_speed_bps"]   = (d_tx >= 0.0 && d_tx < 1e15) ? d_tx : 0.0;
             } else {
                 iface["download_speed_bps"] = 0.0;
                 iface["upload_speed_bps"] = 0.0;

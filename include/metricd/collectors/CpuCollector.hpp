@@ -24,5 +24,4 @@ private:
     static std::vector<Snapshot> readPerCore();
     static int readThreadCount();
     static double readCpuMHz();
-    static double readCpuTemp();
 };
