@@ -53,8 +53,10 @@ namespace metricd::ipc
             std::unique_ptr<ICollector> net_collector_;
             std::unique_ptr<ICollector> gpu_collector_;
             std::unique_ptr<ICollector> temp_collector_;
+            std::unique_ptr<ICollector> battery_collector_;
 
             void initServer();
+            bool ensureSocketExists();
             void initTimer();
 
             void queueAccept();

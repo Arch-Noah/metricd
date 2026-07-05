@@ -29,6 +29,8 @@ install(FILES config/metricd.default.toml
     DESTINATION share/metricd)
 install(FILES packaging/systemd/metricd.service
     DESTINATION lib/systemd/user)
+install(FILES packaging/tmpfiles.d/metricd.conf
+    DESTINATION lib/tmpfiles.d)
 install(FILES LICENSE
     DESTINATION share/licenses/${PROJECT_NAME})
 install(FILES docs/ARCHITECTURE.md docs/PROTOCOL.md

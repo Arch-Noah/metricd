@@ -27,7 +27,9 @@ def main():
             metrics = json.loads(line)
             cpu = metrics.get("cpu", {}).get("cpu_usage_percent", 0)
             mem = metrics.get("memory", {}).get("used_percent", 0)
-            print(f"CPU: {cpu:6.1f}%  MEM: {mem:6.1f}%")
+            bat = metrics.get("battery", {}).get("batteries", [{}])[0].get("capacity_percent", None)
+            bat_str = f"  BAT: {bat:3d}%" if bat is not None else ""
+            print(f"CPU: {cpu:6.1f}%  MEM: {mem:6.1f}%{bat_str}")
     except KeyboardInterrupt:
         pass
     finally:

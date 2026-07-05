@@ -7,6 +7,7 @@
 #include "metricd/collectors/NetworkCollector.hpp"
 #include "metricd/collectors/GpuCollector.hpp"
 #include "metricd/collectors/TemperatureCollector.hpp"
+#include "metricd/collectors/BatteryCollector.hpp"
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include <stdexcept>
@@ -38,6 +39,7 @@ ipc::Server::Server(const metricd::Config& config)  :
     net_collector_ = std::make_unique<NetworkCollector>();
     gpu_collector_ = std::make_unique<GpuCollector>();
     temp_collector_ = std::make_unique<TemperatureCollector>();
+    battery_collector_ = std::make_unique<BatteryCollector>();
 
     initServer();
     initTimer();
@@ -76,6 +78,34 @@ void ipc::Server::initServer()
         close(server_fd);
         throw std::runtime_error("Failed to listen on socket");
     }
+}
+
+bool ipc::Server::ensureSocketExists()
+{
+    struct stat st;
+    if (stat(socketPath.c_str(), &st) == 0)
+        return true;
+
+    int new_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (new_fd < 0) return false;
+
+    struct sockaddr_un addr{};
+    std::memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    std::strncpy(addr.sun_path, socketPath.c_str(), sizeof(addr.sun_path) - 1);
+
+    const mode_t old_umask = umask(0077);
+    int rc = bind(new_fd, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr));
+    umask(old_umask);
+    if (rc < 0) { close(new_fd); return false; }
+
+    if (listen(new_fd, SOMAXCONN) < 0) { close(new_fd); return false; }
+
+    int old_fd = server_fd;
+    server_fd = new_fd;
+    close(old_fd);
+    queueAccept();
+    return true;
 }
 
 void ipc::Server::initTimer()
@@ -271,12 +301,14 @@ std::vector<std::string> ipc::Server::collectMetrics()
     if (config_.enable_network)     messages.push_back(make_msg(net_collector_->name(), net_collector_->collect()));
     if (config_.enable_gpu)         messages.push_back(make_msg(gpu_collector_->name(), gpu_collector_->collect()));
     if (config_.enable_temperature) messages.push_back(make_msg(temp_collector_->name(), temp_collector_->collect()));
+    if (config_.enable_battery)     messages.push_back(make_msg(battery_collector_->name(), battery_collector_->collect()));
 
     return messages;
 }
 
 void ipc::Server::handleTimerTrigger()
 {
+    ensureSocketExists();
     const auto messages = collectMetrics();
     std::vector<char> data;
     for (const auto& msg : messages) {

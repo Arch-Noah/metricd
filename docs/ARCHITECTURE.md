@@ -11,16 +11,17 @@
 │  │ /proc/stat    │  │ /proc/meminfo   │  │ /proc/mounts │  │/proc/net   │ │
 │  │ /proc/cpuinfo │  │ + swap fields   │  │ + statvfs()  │  │ /dev       │ │
 │  │ thermal zones  │  │                 │  │ /proc/disk-  │  │            │ │
-│  │                │  │                 │  │   stats      │  │            │ │
+ │  │                │  │                 │  │ /proc/disk-  │  │            │ │
 │  └──────┬────────┘  └──────┬──────────┘  └──────┬───────┘  └─────┬─────┘ │
 │         │                  │                     │                │       │
-│  ┌──────┴────────┐  ┌──────┴──────────┐  ┌──────┴───────┐        │       │
-│  │ GpuCollector  │  │   Collectors    │  │ JsonSerializer│       │       │
-│  │ nvidia-smi    │  │  (ICollector)   │  │ (nlohmann)   │        │       │
-│  │ (5s cache)    │  │  reused/tick    │  └──────────────┘        │       │
-│  └──────┬────────┘  └──────┬──────────┘                          │       │
-│         │                  │                                     │       │
-│         └────────┬─────────┴─────────────────────────────────────┘       │
+│  ┌──────┴────────┐  ┌──────┴──────────┐  ┌──────┴───────┐  ┌─────┴─────┐ │
+│  │ GpuCollector  │  │ BatteryCollector│  │TempCollector │  │JsonSerial-│ │
+│  │ nvidia-smi    │  │ power_supply/*  │  │ /sys/class/  │  │izer       │ │
+│  │ (5s cache)    │  │ (filter Batte-  │  │ hwmon/therm  │  │(nlohmann) │ │
+│  │               │  │  ry)            │  │ al           │  │           │ │
+│  └──────┬────────┘  └──────┬──────────┘  └──────┬───────┘  └───────────┘ │
+│         │                  │                     │                        │
+│         └────────┬─────────┴─────────────────────┴──────────────────┘     │
 │                  │                                                       │
 │         ┌────────┴────────┐                                              │
 │         │  Server (IPC)   │                                              │
@@ -42,7 +43,7 @@
 
 Interface `ICollector` with pure virtual `collect() -> json` and `name() -> string`.
 
-Five implementations, each reading directly from `/proc` or system interfaces with zero dynamic allocations per line:
+Six implementations, each reading directly from `/proc` or system interfaces with zero dynamic allocations per line:
 
 | Collector | Source | Fields |
 |---|---|---|
@@ -51,6 +52,7 @@ Five implementations, each reading directly from `/proc` or system interfaces wi
 | `DiskCollector` | `/proc/mounts` + `statvfs()` + `/proc/diskstats` | Per-filesystem space + I/O bytes |
 | `NetworkCollector` | `/proc/net/dev` | All interfaces, speed (bps), cumulative + today bytes |
 | `GpuCollector` | `nvidia-smi` subprocess (5s cache) | Load, memory, temp, label |
+| `BatteryCollector` | `/sys/class/power_supply/*/type` filter Battery | Per-battery capacity, status, voltage, current, energy, health, temp, cycles |
 
 **Performance**: Collectors sont des instances réutilisées (pas de recréation par tick). Plus aucun `sleep_for()` bloquant — les deltas sont calculés entre les ticks du `timerfd`. Le GPU collector cache les résultats 5s pour éviter de spawner `nvidia-smi` trop souvent.
 
@@ -91,6 +93,7 @@ memory  = true
 disk    = true
 network = true
 gpu     = true
+battery = true
 per_core = false    # per-core CPU désactivé par défaut (économie)
 ```
 

@@ -16,6 +16,7 @@ namespace metricd {
         cfg.enable_network = true;
         cfg.enable_gpu = true;
         cfg.enable_temperature = true;
+        cfg.enable_battery = true;
         cfg.enable_per_core = false;
         return cfg;
     }
@@ -66,6 +67,7 @@ namespace metricd {
                 if (key == "network")   cfg.enable_network = enabled;
                 if (key == "gpu")           cfg.enable_gpu = enabled;
                 if (key == "temperature")   cfg.enable_temperature = enabled;
+                if (key == "battery")       cfg.enable_battery = enabled;
                 if (key == "per_core")      cfg.enable_per_core = enabled;
             }
         }

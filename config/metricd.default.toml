@@ -8,4 +8,5 @@ disk        = true
 network     = true
 gpu         = true
 temperature = true
+battery     = true
 per_core    = false

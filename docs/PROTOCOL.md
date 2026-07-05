@@ -146,6 +146,52 @@ Counter reset guard: if a per-core or aggregate delta is negative or exceeds `1e
 - Falls back to `/sys/class/thermal/thermal_zone*/temp` if hwmon is unavailable
 - Each sensor has a `label` (e.g. `"CPU Package"`, `"NVMe"`, `"acpitz"`) and `temp_c` in Celsius
 
+#### battery
+
+```json
+{
+  "type": "battery",
+  "timestamp": 1735991234,
+  "proto_version": 1,
+  "batteries": [
+    {
+      "name": "BAT0",
+      "capacity_percent": 78,
+      "status": "Discharging",
+      "voltage_now": 11.52,
+      "current_now": -1.234,
+      "power_now": 14.21,
+      "energy_now": 48.5,
+      "energy_full": 62.0,
+      "energy_full_design": 65.0,
+      "charge_now": 0.981,
+      "charge_full": 1.592,
+      "charge_full_design": 3.950,
+      "health_percent": 95.4,
+      "temp_c": 30.5,
+      "cycle_count": 342,
+      "model": "Primary",
+      "manufacturer": "Hewlett-Packard",
+      "technology": "Li-ion"
+    }
+  ]
+}
+```
+
+- Enumerates `/sys/class/power_supply/*/type` and filters for `"Battery"` (supports multiple batteries and varying paths like `BAT0`, `BAT1`, `CMB0`, etc.)
+- All fields are optional — only available sysfs files are included
+- `capacity_percent` — 0–100 battery charge level
+- `status` — `"Charging"`, `"Discharging"`, `"Full"`, `"Not charging"`, `"Unknown"`
+- `voltage_now` — current voltage in volts (converted from µV)
+- `current_now` — current in amps (converted from µA; negative = discharging)
+- `power_now` — power in watts (converted from µW)
+- `energy_*` — energy in watt-hours (converted from µWh)
+- `charge_*` — charge in ampere-hours (converted from µAh)
+- `temp_c` — battery temperature in Celsius (converted from tenths of °C)
+- `health_percent` — `energy_full / energy_full_design * 100` (falls back to `charge_full / charge_full_design`)
+- `cycle_count` — number of charge/discharge cycles
+- `model`, `manufacturer`, `technology` — battery identity info
+
 ### Collectors disabled
 
 When a collector is disabled (`false` in config), its message type is omitted from the broadcast entirely. There is no null/empty placeholder — clients should treat absence as "collector disabled".

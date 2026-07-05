@@ -21,8 +21,7 @@ int main()
         config_path = env_path;
     } else {
         const char* home = std::getenv("HOME");
-        config_path = home ? std::string(home) + "/.config/metricd/metricd.toml"
-                           : "";
+        config_path = home ? std::string(home) + "/.config/metricd/metricd.toml" : "";
     }
 
     metricd::Config cfg;
