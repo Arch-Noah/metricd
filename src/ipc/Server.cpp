@@ -8,6 +8,7 @@
 #include "metricd/collectors/GpuCollector.hpp"
 #include "metricd/collectors/TemperatureCollector.hpp"
 #include "metricd/collectors/BatteryCollector.hpp"
+#include "metricd/collectors/SystemCollector.hpp"
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include <stdexcept>
@@ -40,6 +41,7 @@ ipc::Server::Server(const metricd::Config& config)  :
     gpu_collector_ = std::make_unique<GpuCollector>();
     temp_collector_ = std::make_unique<TemperatureCollector>();
     battery_collector_ = std::make_unique<BatteryCollector>();
+    system_collector_ = std::make_unique<SystemCollector>();
 
     initServer();
     initTimer();
@@ -302,6 +304,7 @@ std::vector<std::string> ipc::Server::collectMetrics()
     if (config_.enable_gpu)         messages.push_back(make_msg(gpu_collector_->name(), gpu_collector_->collect()));
     if (config_.enable_temperature) messages.push_back(make_msg(temp_collector_->name(), temp_collector_->collect()));
     if (config_.enable_battery)     messages.push_back(make_msg(battery_collector_->name(), battery_collector_->collect()));
+    if (config_.enable_system)      messages.push_back(make_msg(system_collector_->name(), system_collector_->collect()));
 
     return messages;
 }

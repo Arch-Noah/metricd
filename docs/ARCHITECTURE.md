@@ -43,7 +43,7 @@
 
 Interface `ICollector` with pure virtual `collect() -> json` and `name() -> string`.
 
-Six implementations, each reading directly from `/proc` or system interfaces with zero dynamic allocations per line:
+Seven implementations, each reading directly from `/proc` or system interfaces with zero dynamic allocations per line:
 
 | Collector | Source | Fields |
 |---|---|---|
@@ -53,6 +53,7 @@ Six implementations, each reading directly from `/proc` or system interfaces wit
 | `NetworkCollector` | `/proc/net/dev` | All interfaces, speed (bps), cumulative + today bytes |
 | `GpuCollector` | `nvidia-smi` subprocess (5s cache) | Load, memory, temp, label |
 | `BatteryCollector` | `/sys/class/power_supply/*/type` filter Battery | Per-battery capacity, status, voltage, current, energy, health, temp, cycles |
+| `SystemCollector` | `/proc/loadavg`, `/proc/uptime` | Load 1/5/15min, procs running/total, uptime |
 
 **Performance**: Collectors sont des instances réutilisées (pas de recréation par tick). Plus aucun `sleep_for()` bloquant — les deltas sont calculés entre les ticks du `timerfd`. Le GPU collector cache les résultats 5s pour éviter de spawner `nvidia-smi` trop souvent.
 

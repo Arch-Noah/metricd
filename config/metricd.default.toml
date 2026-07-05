@@ -9,4 +9,5 @@ network     = true
 gpu         = true
 temperature = true
 battery     = true
+system      = true
 per_core    = false

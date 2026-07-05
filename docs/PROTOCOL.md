@@ -192,6 +192,28 @@ Counter reset guard: if a per-core or aggregate delta is negative or exceeds `1e
 - `cycle_count` — number of charge/discharge cycles
 - `model`, `manufacturer`, `technology` — battery identity info
 
+#### system
+
+```json
+{
+  "type": "system",
+  "timestamp": 1735991234,
+  "proto_version": 1,
+  "load_1min": 1.23,
+  "load_5min": 0.89,
+  "load_15min": 0.67,
+  "procs_running": 3,
+  "procs_total": 487,
+  "uptime_seconds": 48293,
+  "uptime_human": "13h24m"
+}
+```
+
+- `load_*` — standard `/proc/loadavg` 1/5/15 minute averages
+- `procs_running` / `procs_total` — currently running processes / total processes
+- `uptime_seconds` — seconds since boot
+- `uptime_human` — human-readable uptime (e.g. `"2d 13h24m"`)
+
 ### Collectors disabled
 
 When a collector is disabled (`false` in config), its message type is omitted from the broadcast entirely. There is no null/empty placeholder — clients should treat absence as "collector disabled".
