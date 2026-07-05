@@ -91,8 +91,8 @@ nlohmann::json TemperatureCollector::collect()
     }
 
     nlohmann::json arr = nlohmann::json::array();
-    for (const auto& s : sensors) {
-        arr.push_back({{"label", s.label}, {"temp_c", s.temp_c}});
+    for (const auto& [label, temp_c] : sensors) {
+        arr.push_back({{"label", label}, {"temp_c", temp_c}});
     }
 
     return {{"sensors", arr}};

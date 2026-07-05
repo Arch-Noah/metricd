@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-Minimal metricd client.
-Reads newline-delimited JSON from the Unix socket and prints metrics.
+metricd client — displays all metrics consolidated per tick.
 """
 
 import socket
@@ -22,17 +21,71 @@ def main():
 
     print(f"Connected to {SOCKET_PATH}", file=sys.stderr)
 
+    buf = {}
+    prev_ts = 0
+
+    def flush():
+        nonlocal buf
+        parts = []
+
+        cpu = buf.get("cpu", {})
+        if cpu:
+            parts.append(f"CPU: {cpu.get('cpu_usage_percent', 0):5.1f}%")
+
+        mem = buf.get("memory", {})
+        if mem:
+            parts.append(f"MEM: {mem.get('used_percent', 0):5.1f}%")
+
+        disk = buf.get("disk", {})
+        if disk:
+            total = sum(fs.get("total_gb", 0) for fs in disk.get("filesystems", []))
+            used = sum(fs.get("used_gb", 0) for fs in disk.get("filesystems", []))
+            if total:
+                parts.append(f"DSK: {used:.0f}/{total:.0f}GB ({used/total*100:.0f}%)")
+
+        net = buf.get("network", {})
+        if net:
+            down = sum(i.get("download_speed_bps", 0) for i in net.get("interfaces", []))
+            up = sum(i.get("upload_speed_bps", 0) for i in net.get("interfaces", []))
+            parts.append(f"NET: ↓{down//1000:>4}kb ↑{up//1000:>4}kb")
+
+        gpu = buf.get("gpu", {})
+        if gpu:
+            parts.append(f"GPU: {gpu.get('load_percent', 0):.0f}% {gpu.get('temp_c', 0):.0f}°C")
+
+        temp = buf.get("temperature", {})
+        if temp:
+            sensors = temp.get("sensors", [])
+            if sensors:
+                max_t = max(s.get("temp_c", 0) for s in sensors)
+                parts.append(f"TMP: {max_t:.0f}°C")
+
+        bat = buf.get("battery", {})
+        if bat:
+            batteries = bat.get("batteries", [])
+            if batteries:
+                b = batteries[0]
+                cap = b.get("capacity_percent")
+                if cap is not None:
+                    parts.append(f"BAT: {cap}%")
+
+        if parts:
+            print("  |  ".join(parts), flush=True)
+
+        buf = {}
+
     try:
         for line in sock.makefile("r"):
-            metrics = json.loads(line)
-            cpu = metrics.get("cpu", {}).get("cpu_usage_percent", 0)
-            mem = metrics.get("memory", {}).get("used_percent", 0)
-            bat = metrics.get("battery", {}).get("batteries", [{}])[0].get("capacity_percent", None)
-            bat_str = f"  BAT: {bat:3d}%" if bat is not None else ""
-            print(f"CPU: {cpu:6.1f}%  MEM: {mem:6.1f}%{bat_str}")
+            msg = json.loads(line)
+            ts = msg.get("timestamp", 0)
+            if ts != prev_ts and prev_ts != 0:
+                flush()
+            prev_ts = ts
+            buf[msg.get("type")] = msg
     except KeyboardInterrupt:
         pass
     finally:
+        flush()
         sock.close()
 
     return 0
