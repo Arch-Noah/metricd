@@ -7,8 +7,8 @@ obj/
 *.o
 *.a
 *.so
-metricd
-metricd_tests
+/metricd
+/metricd_tests
 libmetricd_core.a
 
 # Dependencies
